@@ -1,0 +1,10 @@
+<div #rendererContainer class="renderer-container"></div>
+
+<div class="modal" *ngIf="selectedArtwork" (click)="selectedArtwork = null">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <h2>{{ selectedArtwork.title }}</h2>
+    <img [src]="selectedArtwork.src" alt="{{ selectedArtwork.title }}" />
+    <p>{{ selectedArtwork.text }}</p>
+    <button (click)="selectedArtwork = null">Close</button>
+  </div>
+</div>

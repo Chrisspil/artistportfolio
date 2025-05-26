@@ -1,0 +1,26 @@
+<footer class="footer">
+  <div class="footer-content">
+    <div class="footer-logo">
+      <img src="/assets/images/spiliotis-logo.png" alt="Spiliotis Logo" />
+    </div>
+    <div class="footer-links">
+      <a
+        routerLink="/"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        >Home</a
+      >
+      <a routerLink="/gallery" routerLinkActive="active">Gallery</a>
+      <a routerLink="/virtual-gallery" routerLinkActive="active">3D Gallery</a>
+      <a routerLink="/about" routerLinkActive="active">About</a>
+      <a routerLink="/contact" routerLinkActive="active">Contact</a>
+    </div>
+    <div class="footer-info">
+      <p>&copy; {{ currentYear }} Spiliotis. All rights reserved.</p>
+      <p>
+        Email: <a href="mailto:spiliotisch@yahoo.gr">spiliotisch&#64;yahoo.gr</a>
+      </p>
+      <p>Based in Kimi, Greece</p>
+    </div>
+  </div>
+</footer>
