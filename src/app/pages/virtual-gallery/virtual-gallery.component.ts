@@ -30,6 +30,7 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
   mouse = new THREE.Vector2();
   isMouseMoving = false;
   mouseMoveTimeout: any;
+  openDirections = false;
 
   animationFrameId!: number;
 
@@ -48,6 +49,7 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
   }
 
   initScene() {
+    this.openDirections = true;
     const width = this.rendererContainer.nativeElement.clientWidth;
     const height = this.rendererContainer.nativeElement.clientHeight;
 
@@ -89,43 +91,12 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
     bulb.position.copy(ceilingLight.position);
     this.scene.add(bulb);
 
-    // const ceilingHeight = 6.8; // Ύψος οροφής
-
-    // Θέσεις 6 φώτων στο ταβάνι - π.χ. 2 γραμμές από 3 φώτα η καθεμία
-    // const lightPositions = [
-    //   new THREE.Vector3(-5, ceilingHeight, -3),
-    //   new THREE.Vector3(0, ceilingHeight, -3),
-    //   new THREE.Vector3(5, ceilingHeight, -3),
-    //   new THREE.Vector3(-5, ceilingHeight, 3),
-    //   new THREE.Vector3(0, ceilingHeight, 3),
-    //   new THREE.Vector3(5, ceilingHeight, 3),
-    // ];
-
-    // lightPositions.forEach((pos) => {
-    //   const light = new THREE.PointLight(0xffffff, 30, 20); // ένταση 3, ακτίνα 20
-    //   light.position.copy(pos);
-    //   light.castShadow = true; // αν θέλεις σκιά
-    //   this.scene.add(light);
-    // });
-
-    // Ταβάνι - PlaneGeometry με απαλό φωτισμό / αντανακλαστικότητα
-    // const ceiling = new THREE.Mesh(
-    //   new THREE.PlaneGeometry(50, 50),
-    //   new THREE.MeshStandardMaterial({
-    //     color: 'FFFFF0',
-    //     side: THREE.DoubleSide,
-    //   })
-    // );
-    // ceiling.rotation.x = Math.PI / 2; // κοιτάζει προς τα κάτω
-    // ceiling.position.y = 7; // ύψος ταβανιού όπως οι τοίχοι
-    // this.scene.add(ceiling);
-
     const ceilingTexture = new THREE.TextureLoader().load(
       'assets/images/marble.jpg'
     );
     ceilingTexture.wrapS = THREE.RepeatWrapping;
     ceilingTexture.wrapT = THREE.RepeatWrapping;
-    ceilingTexture.repeat.set(10, 10);
+    ceilingTexture.repeat.set(20, 20);
 
     const texturedMaterial = new THREE.MeshStandardMaterial({
       map: ceilingTexture,
@@ -141,8 +112,8 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
       roughness: 0.7,
     });
 
-    for (let x = -20; x < 20; x += panelSize + 0.2) {
-      for (let z = -20; z < 20; z += panelSize + 0.2) {
+    for (let x = -16; x < 16; x += panelSize + 0.2) {
+      for (let z = -16; z < 16; z += panelSize + 0.2) {
         const panel = new THREE.Mesh(
           new THREE.PlaneGeometry(panelSize, panelSize),
           texturedMaterial
@@ -202,8 +173,8 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
       side: THREE.DoubleSide,
     });
     const wallThickness = 1;
-    const wallHeight = 4;
-    const wallWidth = 30;
+    const wallHeight = 5;
+    const wallWidth = 17;
 
     const frontWall = new THREE.Mesh(
       new THREE.PlaneGeometry(wallWidth, wallHeight, wallThickness),
@@ -243,27 +214,20 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
       this.wallBoxes.push(box);
     });
 
-    // Δάπεδο παλιο
-    // const floor = new THREE.Mesh(
-    //   new THREE.PlaneGeometry(20, 20),
-    //   new THREE.MeshStandardMaterial({ color: '#f9f6ed' })
-    // );
-    // floor.rotation.x = -Math.PI / 2;
-    // floor.position.y = 0;
-    // this.scene.add(floor);
+    //δαπεδο
 
     const marbleTexture = new THREE.TextureLoader().load(
       'assets/images/marble.jpg'
     );
     marbleTexture.wrapS = THREE.RepeatWrapping;
     marbleTexture.wrapT = THREE.RepeatWrapping;
-    marbleTexture.repeat.set(20, 20);
+    marbleTexture.repeat.set(16, 16);
 
     const floorMaterial = new THREE.MeshStandardMaterial({
       map: marbleTexture,
     });
     const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(20, 20),
+      new THREE.PlaneGeometry(16, 16),
       floorMaterial
     );
     floor.rotation.x = -Math.PI / 2;
@@ -343,7 +307,10 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
     );
 
     // Επιστρέφει true αν υπάρχει σύγκρουση
-    return this.wallBoxes.some((wallBox) => wallBox.intersectsBox(playerBox));
+    return this.wallBoxes.some((wallBox) => {
+      const collision = wallBox.intersectsBox(playerBox);
+      return collision;
+    });
   }
 
   updateMovement(delta: number) {
@@ -471,14 +438,6 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
       this.scene.add(mesh);
 
       // Φωτισμός πάνω από το έργο
-      // const light = new THREE.SpotLight(0xffffff, 0.6, 1);
-      // light.position.set(
-      //   mesh.position.x,
-      //   mesh.position.y + height / 2 + 1,
-      //   mesh.position.z
-      // );
-      // this.scene.add(light);
-      // Φωτισμός πάνω από το έργο
       const light = new THREE.SpotLight(0xffffff, 1.5, 5);
       light.position.set(
         mesh.position.x,
@@ -518,6 +477,10 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
 
   toggleInfo() {
     this.selectedArtwork = null;
+  }
+
+  closeDirectionModal() {
+    this.openDirections = !this.openDirections;
   }
 
   resetCamera() {

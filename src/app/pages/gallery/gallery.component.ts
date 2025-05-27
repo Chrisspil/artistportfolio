@@ -13,14 +13,7 @@ import { Artwork, artworks } from '../../artworks';
 export class GalleryComponent {
   artworks: Artwork[] = artworks;
 
-  categories = [
-    'All',
-    'Urban',
-    'Abstract',
-    'Emotions',
-    'Digital Art',
-    'Watercolors',
-  ];
+  categories = ['All', 'Abstract', 'Digital Art', 'Watercolors'];
   filteredArtworks = this.artworks;
 
   filterCategory(category: string) {
