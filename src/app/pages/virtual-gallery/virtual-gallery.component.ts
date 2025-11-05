@@ -46,6 +46,7 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit() {
     this.initScene();
     this.animate();
+    const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }
 
   initScene() {
