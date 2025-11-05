@@ -35,6 +35,7 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
   openDirections = false;
   controlsMobile!: OrbitControls;
   isMobile = false;
+  cameraPivot!: THREE.Object3D;
 
   animationFrameId!: number;
 
@@ -47,94 +48,191 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
 
   clock = new THREE.Clock();
 
+  // ngAfterViewInit() {
+  //   this.isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  //   this.initScene(this.isMobile);
+  //   this.animate();
+
+  //   if (!this.isMobile) {
+  //     this.controls = new FirstPersonControls(
+  //       this.camera,
+  //       this.renderer.domElement
+  //     );
+  //     this.controls.lookSpeed = 0.05;
+  //     this.controls.movementSpeed = 0;
+  //     this.controls.lookVertical = true;
+  //     this.controls.constrainVertical = true;
+  //   }
+
+  //   // --- MOBILE JOYSTICK ---
+  //   if (this.isMobile) {
+  //     // Δημιουργία zone για joystick
+  //     const joystickZone = document.createElement('div');
+  //     joystickZone.id = 'joystick';
+  //     joystickZone.style.position = 'absolute';
+  //     joystickZone.style.bottom = '80px';
+  //     joystickZone.style.left = '80px';
+  //     joystickZone.style.width = '150px';
+  //     joystickZone.style.height = '150px';
+  //     joystickZone.style.zIndex = '10';
+  //     joystickZone.style.background = 'rgba(255, 255, 255, 0.05)';
+  //     joystickZone.style.borderRadius = '50%';
+  //     document.body.appendChild(joystickZone);
+
+  //     // Δημιουργία joystick με nipplejs
+  //     const manager = nipplejs.create({
+  //       zone: joystickZone,
+  //       mode: 'static',
+  //       position: { left: '50%', top: '50%' },
+  //       color: 'white',
+  //       size: 100,
+  //     });
+
+  //     manager.on('move', (_evt, data) => {
+  //       if (!data || !data.angle || !data.force) return;
+
+  //       // Υπολογισμός κίνησης
+  //       const speed = data.force * 0.05;
+  //       const forward = Math.cos(data.angle.radian);
+  //       const sideways = Math.sin(data.angle.radian);
+
+  //       // Κίνηση κάμερας
+  //       this.camera.position.x += sideways * speed;
+  //       this.camera.position.z -= forward * speed;
+  //     });
+
+  //     const lookZone = document.createElement('div');
+  //     lookZone.id = 'look-joystick';
+  //     lookZone.style.position = 'absolute';
+  //     lookZone.style.bottom = '50px';
+  //     lookZone.style.right = '50px';
+  //     lookZone.style.width = '150px';
+  //     lookZone.style.height = '150px';
+  //     lookZone.style.zIndex = '10';
+  //     lookZone.style.background = 'transparent';
+  //     document.body.appendChild(lookZone);
+
+  //     const lookManager = nipplejs.create({
+  //       zone: lookZone,
+  //       mode: 'static',
+  //       position: { left: '50%', top: '50%' },
+  //       color: 'white',
+  //       size: 100,
+  //     });
+
+  //     lookManager.on('move', (evt, data) => {
+  //       if (!data.vector) return;
+
+  //       const speed = data.force * 0.02;
+
+  //       // Περιστροφή κάμερας
+  //       this.camera.rotation.y -= data.vector.x * speed; // αριστερά/δεξιά
+  //       this.camera.rotation.x -= data.vector.y * speed; // πάνω/κάτω
+
+  //       // Περιορισμός για να μην γυρίζει ανάποδα
+  //       this.camera.rotation.x = Math.max(
+  //         -Math.PI / 2,
+  //         Math.min(Math.PI / 2, this.camera.rotation.x)
+  //       );
+  //     });
+  //   }
+  // }
+
   ngAfterViewInit() {
     this.isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
     this.initScene(this.isMobile);
     this.animate();
 
-    if (!this.isMobile) {
-      this.controls = new FirstPersonControls(
-        this.camera,
-        this.renderer.domElement
+    if (!this.isMobile) return; // desktop ήδη δουλεύει με keyboard + mouse
+
+    // === Δημιουργία pivot για σωστή περιστροφή ===
+    this.cameraPivot = new THREE.Object3D();
+    this.cameraPivot.position.copy(this.camera.position);
+    this.scene.add(this.cameraPivot);
+    this.camera.position.set(0, 0, 0);
+    this.cameraPivot.add(this.camera);
+
+    // === Δημιουργία zones για joystick ===
+    const leftZone = document.createElement('div');
+    leftZone.id = 'joystick-left';
+    Object.assign(leftZone.style, {
+      position: 'absolute',
+      bottom: '80px',
+      left: '40px',
+      width: '120px',
+      height: '120px',
+      zIndex: '10',
+      background: 'transparent',
+    });
+    document.body.appendChild(leftZone);
+
+    const rightZone = document.createElement('div');
+    rightZone.id = 'joystick-right';
+    Object.assign(rightZone.style, {
+      position: 'absolute',
+      bottom: '80px',
+      right: '40px',
+      width: '120px',
+      height: '120px',
+      zIndex: '10',
+      background: 'transparent',
+    });
+    document.body.appendChild(rightZone);
+
+    // === Αριστερό joystick (κίνηση) ===
+    const moveManager = nipplejs.create({
+      zone: leftZone,
+      mode: 'static',
+      position: { left: '50%', top: '50%' },
+      color: 'white',
+      size: 100,
+    });
+
+    moveManager.on('move', (evt, data) => {
+      if (!data.vector) return;
+      const speed = data.force * 0.05;
+
+      // Κίνηση σε σχέση με την κατεύθυνση της κάμερας
+      const forward = new THREE.Vector3();
+      this.camera.getWorldDirection(forward);
+      forward.y = 0;
+      forward.normalize();
+
+      const side = new THREE.Vector3()
+        .crossVectors(this.camera.up, forward)
+        .normalize();
+
+      this.cameraPivot.position.addScaledVector(
+        forward,
+        -data.vector.y * speed
       );
-      this.controls.lookSpeed = 0.05;
-      this.controls.movementSpeed = 0;
-      this.controls.lookVertical = true;
-      this.controls.constrainVertical = true;
-    }
+      this.cameraPivot.position.addScaledVector(side, data.vector.x * speed);
+    });
 
-    // --- MOBILE JOYSTICK ---
-    if (this.isMobile) {
-      // Δημιουργία zone για joystick
-      const joystickZone = document.createElement('div');
-      joystickZone.id = 'joystick';
-      joystickZone.style.position = 'absolute';
-      joystickZone.style.bottom = '80px';
-      joystickZone.style.left = '80px';
-      joystickZone.style.width = '150px';
-      joystickZone.style.height = '150px';
-      joystickZone.style.zIndex = '10';
-      joystickZone.style.background = 'rgba(255, 255, 255, 0.05)';
-      joystickZone.style.borderRadius = '50%';
-      document.body.appendChild(joystickZone);
+    // === Δεξί joystick (περιστροφή) ===
+    const lookManager = nipplejs.create({
+      zone: rightZone,
+      mode: 'static',
+      position: { left: '50%', top: '50%' },
+      color: 'white',
+      size: 100,
+    });
 
-      // Δημιουργία joystick με nipplejs
-      const manager = nipplejs.create({
-        zone: joystickZone,
-        mode: 'static',
-        position: { left: '50%', top: '50%' },
-        color: 'white',
-        size: 100,
-      });
+    lookManager.on('move', (evt, data) => {
+      if (!data.vector) return;
+      const speed = data.force * 0.02;
 
-      manager.on('move', (_evt, data) => {
-        if (!data || !data.angle || !data.force) return;
+      // yaw (αριστερά/δεξιά)
+      this.cameraPivot.rotation.y -= data.vector.x * speed;
 
-        // Υπολογισμός κίνησης
-        const speed = data.force * 0.05;
-        const forward = Math.cos(data.angle.radian);
-        const sideways = Math.sin(data.angle.radian);
-
-        // Κίνηση κάμερας
-        this.camera.position.x += sideways * speed;
-        this.camera.position.z -= forward * speed;
-      });
-
-      const lookZone = document.createElement('div');
-      lookZone.id = 'look-joystick';
-      lookZone.style.position = 'absolute';
-      lookZone.style.bottom = '50px';
-      lookZone.style.right = '50px';
-      lookZone.style.width = '150px';
-      lookZone.style.height = '150px';
-      lookZone.style.zIndex = '10';
-      lookZone.style.background = 'transparent';
-      document.body.appendChild(lookZone);
-
-      const lookManager = nipplejs.create({
-        zone: lookZone,
-        mode: 'static',
-        position: { left: '50%', top: '50%' },
-        color: 'white',
-        size: 100,
-      });
-
-      lookManager.on('move', (evt, data) => {
-        if (!data.vector) return;
-
-        const speed = data.force * 0.02;
-
-        // Περιστροφή κάμερας
-        this.camera.rotation.y -= data.vector.x * speed; // αριστερά/δεξιά
-        this.camera.rotation.x -= data.vector.y * speed; // πάνω/κάτω
-
-        // Περιορισμός για να μην γυρίζει ανάποδα
-        this.camera.rotation.x = Math.max(
-          -Math.PI / 2,
-          Math.min(Math.PI / 2, this.camera.rotation.x)
-        );
-      });
-    }
+      // pitch (πάνω/κάτω)
+      this.camera.rotation.x -= data.vector.y * speed;
+      this.camera.rotation.x = Math.max(
+        -Math.PI / 2,
+        Math.min(Math.PI / 2, this.camera.rotation.x)
+      );
+    });
   }
 
   initScene(isMobile: boolean) {
