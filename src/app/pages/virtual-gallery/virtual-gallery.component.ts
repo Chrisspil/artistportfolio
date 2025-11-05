@@ -182,7 +182,7 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
       width: '120px',
       height: '120px',
       zIndex: '10',
-      background: 'transparent',
+      background: 'rgba(255,255,255,0.1)',
     });
     document.body.appendChild(rightZone);
 
@@ -206,9 +206,11 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
       forward.y = 0;
       forward.normalize();
 
-      const right = new THREE.Vector3()
-        .crossVectors(new THREE.Vector3(0, 1, 0), forward)
-        .normalize();
+      const right = new THREE.Vector3().crossVectors(
+        new THREE.Vector3(0, 1, 0),
+        forward
+      );
+      right.normalize();
 
       const move = new THREE.Vector3();
       move.addScaledVector(forward, data.vector.y * speed);
