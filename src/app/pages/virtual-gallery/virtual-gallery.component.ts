@@ -152,9 +152,11 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
     this.cameraYaw = new THREE.Object3D();
     this.cameraPitch = new THREE.Object3D();
 
+    // Θέτουμε cameraYaw στη θέση της κάμερας
     this.cameraYaw.position.copy(this.camera.position);
     this.scene.add(this.cameraYaw);
 
+    // Camera μέσα στο pitch, pitch μέσα στο yaw
     this.camera.position.set(0, 0, 0);
     this.cameraPitch.add(this.camera);
     this.cameraYaw.add(this.cameraPitch);
@@ -197,16 +199,24 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
       if (!data.vector) return;
       const speed = data.force * 0.05;
 
-      // Κίνηση σε σχέση με την κατεύθυνση της κάμερας (yaw)
+      // Forward = -Z στο world, Right = X
       const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(
         this.cameraYaw.quaternion
       );
-      const side = new THREE.Vector3()
-        .crossVectors(this.camera.up, forward)
+      const right = new THREE.Vector3()
+        .crossVectors(new THREE.Vector3(0, 1, 0), forward)
         .normalize();
 
-      this.cameraYaw.position.addScaledVector(forward, -data.vector.y * speed);
-      this.cameraYaw.position.addScaledVector(side, data.vector.x * speed);
+      const move = new THREE.Vector3();
+      move.addScaledVector(forward, data.vector.y * speed); // πάνω = μπροστά
+      move.addScaledVector(right, data.vector.x * speed);
+
+      const newPosition = this.cameraYaw.position.clone().add(move);
+
+      // Collision check
+      if (!this.checkCollision(newPosition)) {
+        this.cameraYaw.position.copy(newPosition);
+      }
     });
 
     // === Δεξί joystick για περιστροφή ===
@@ -223,10 +233,10 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
 
       const sensitivity = 0.05;
 
-      // Yaw: αριστερά/δεξιά
+      // Yaw (αριστερά/δεξιά)
       this.cameraYaw.rotation.y -= data.vector.x * sensitivity;
 
-      // Pitch: πάνω/κάτω
+      // Pitch (πάνω/κάτω)
       this.cameraPitch.rotation.x -= data.vector.y * sensitivity;
       this.cameraPitch.rotation.x = Math.max(
         -Math.PI / 2,
