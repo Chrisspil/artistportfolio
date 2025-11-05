@@ -35,7 +35,9 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
   openDirections = false;
   controlsMobile!: OrbitControls;
   isMobile = false;
-  cameraPivot!: THREE.Object3D;
+  cameraPivot!: THREE.Object3D; // αν το θες ακόμα
+  cameraYaw!: THREE.Object3D; // νέο
+  cameraPitch!: THREE.Object3D; // νέο
 
   animationFrameId!: number;
 
@@ -144,18 +146,21 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
     this.initScene(this.isMobile);
     this.animate();
 
-    if (!this.isMobile) return; // desktop ήδη δουλεύει με keyboard + mouse
+    if (!this.isMobile) return; // Desktop ήδη δουλεύει με keyboard + mouse
 
-    // === Δημιουργία pivot για σωστή περιστροφή ===
-    this.cameraPivot = new THREE.Object3D();
-    this.cameraPivot.position.copy(this.camera.position);
-    this.scene.add(this.cameraPivot);
+    // === Δημιουργία δύο pivots για σωστή περιστροφή ===
+    this.cameraYaw = new THREE.Object3D();
+    this.cameraPitch = new THREE.Object3D();
+
+    this.cameraYaw.position.copy(this.camera.position);
+    this.scene.add(this.cameraYaw);
+
     this.camera.position.set(0, 0, 0);
-    this.cameraPivot.add(this.camera);
+    this.cameraPitch.add(this.camera);
+    this.cameraYaw.add(this.cameraPitch);
 
-    // === Δημιουργία zones για joystick ===
+    // === Δημιουργία zones για joysticks ===
     const leftZone = document.createElement('div');
-    leftZone.id = 'joystick-left';
     Object.assign(leftZone.style, {
       position: 'absolute',
       bottom: '80px',
@@ -168,7 +173,6 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
     document.body.appendChild(leftZone);
 
     const rightZone = document.createElement('div');
-    rightZone.id = 'joystick-right';
     Object.assign(rightZone.style, {
       position: 'absolute',
       bottom: '80px',
@@ -180,7 +184,7 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
     });
     document.body.appendChild(rightZone);
 
-    // === Αριστερό joystick (κίνηση) ===
+    // === Αριστερό joystick για κίνηση ===
     const moveManager = nipplejs.create({
       zone: leftZone,
       mode: 'static',
@@ -189,28 +193,23 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
       size: 100,
     });
 
-    moveManager.on('move', (evt, data) => {
+    moveManager.on('move', (_evt, data) => {
       if (!data.vector) return;
       const speed = data.force * 0.05;
 
-      // Κίνηση σε σχέση με την κατεύθυνση της κάμερας
-      const forward = new THREE.Vector3();
-      this.camera.getWorldDirection(forward);
-      forward.y = 0;
-      forward.normalize();
-
+      // Κίνηση σε σχέση με την κατεύθυνση της κάμερας (yaw)
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(
+        this.cameraYaw.quaternion
+      );
       const side = new THREE.Vector3()
         .crossVectors(this.camera.up, forward)
         .normalize();
 
-      this.cameraPivot.position.addScaledVector(
-        forward,
-        -data.vector.y * speed
-      );
-      this.cameraPivot.position.addScaledVector(side, data.vector.x * speed);
+      this.cameraYaw.position.addScaledVector(forward, -data.vector.y * speed);
+      this.cameraYaw.position.addScaledVector(side, data.vector.x * speed);
     });
 
-    // === Δεξί joystick (περιστροφή) ===
+    // === Δεξί joystick για περιστροφή ===
     const lookManager = nipplejs.create({
       zone: rightZone,
       mode: 'static',
@@ -219,18 +218,19 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
       size: 100,
     });
 
-    lookManager.on('move', (evt, data) => {
+    lookManager.on('move', (_evt, data) => {
       if (!data.vector) return;
-      const speed = data.force * 0.02;
 
-      // yaw (αριστερά/δεξιά)
-      this.cameraPivot.rotation.y -= data.vector.x * speed;
+      const sensitivity = 0.05;
 
-      // pitch (πάνω/κάτω)
-      this.camera.rotation.x -= data.vector.y * speed;
-      this.camera.rotation.x = Math.max(
+      // Yaw: αριστερά/δεξιά
+      this.cameraYaw.rotation.y -= data.vector.x * sensitivity;
+
+      // Pitch: πάνω/κάτω
+      this.cameraPitch.rotation.x -= data.vector.y * sensitivity;
+      this.cameraPitch.rotation.x = Math.max(
         -Math.PI / 2,
-        Math.min(Math.PI / 2, this.camera.rotation.x)
+        Math.min(Math.PI / 2, this.cameraPitch.rotation.x)
       );
     });
   }
