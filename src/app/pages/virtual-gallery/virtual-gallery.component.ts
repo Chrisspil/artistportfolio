@@ -1,3 +1,6 @@
+import * as THREE from 'three';
+import { FirstPersonControls } from 'three/examples/jsm/controls/FirstPersonControls.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {
   AfterViewInit,
   Component,
@@ -6,10 +9,9 @@ import {
   OnDestroy,
   ViewChild,
 } from '@angular/core';
-import * as THREE from 'three';
-import { FirstPersonControls } from 'three/examples/jsm/controls/FirstPersonControls.js';
 import { artworks, Artwork } from '../../artworks';
 import { CommonModule } from '@angular/common';
+import nipplejs from 'nipplejs';
 
 @Component({
   selector: 'app-virtual-gallery',
@@ -31,6 +33,8 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
   isMouseMoving = false;
   mouseMoveTimeout: any;
   openDirections = false;
+  controlsMobile!: OrbitControls;
+  isMobile = false;
 
   animationFrameId!: number;
 
@@ -44,13 +48,62 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
   clock = new THREE.Clock();
 
   ngAfterViewInit() {
-    this.initScene();
+    this.isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    this.initScene(this.isMobile);
     this.animate();
-    const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    if (!this.isMobile) {
+      this.controls = new FirstPersonControls(
+        this.camera,
+        this.renderer.domElement
+      );
+      this.controls.lookSpeed = 0.05;
+      this.controls.movementSpeed = 0;
+      this.controls.lookVertical = true;
+      this.controls.constrainVertical = true;
+    }
+
+    // --- MOBILE JOYSTICK ---
+    if (this.isMobile) {
+      // Δημιουργία zone για joystick
+      const joystickZone = document.createElement('div');
+      joystickZone.id = 'joystick';
+      joystickZone.style.position = 'absolute';
+      joystickZone.style.bottom = '80px';
+      joystickZone.style.left = '80px';
+      joystickZone.style.width = '150px';
+      joystickZone.style.height = '150px';
+      joystickZone.style.zIndex = '10';
+      joystickZone.style.background = 'rgba(255, 255, 255, 0.05)';
+      joystickZone.style.borderRadius = '50%';
+      document.body.appendChild(joystickZone);
+
+      // Δημιουργία joystick με nipplejs
+      const manager = nipplejs.create({
+        zone: joystickZone,
+        mode: 'static',
+        position: { left: '50%', top: '50%' },
+        color: 'white',
+        size: 100,
+      });
+
+      manager.on('move', (_evt, data) => {
+        if (!data || !data.angle || !data.force) return;
+
+        // Υπολογισμός κίνησης
+        const speed = data.force * 0.05;
+        const forward = Math.cos(data.angle.radian);
+        const sideways = Math.sin(data.angle.radian);
+
+        // Κίνηση κάμερας
+        this.camera.position.x += sideways * speed;
+        this.camera.position.z -= forward * speed;
+      });
+    }
   }
 
-  initScene() {
-    this.openDirections = true;
+  initScene(isMobile: boolean) {
+    this.openDirections = !isMobile;
     const width = this.rendererContainer.nativeElement.clientWidth;
     const height = this.rendererContainer.nativeElement.clientHeight;
 
@@ -64,17 +117,30 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
     this.renderer.setSize(width, height);
     this.rendererContainer.nativeElement.appendChild(this.renderer.domElement);
 
-    this.controls = new FirstPersonControls(
-      this.camera,
-      this.renderer.domElement
-    );
-    this.controls.lookSpeed = 0.05;
-    this.controls.movementSpeed = 0;
-    this.controls.lookVertical = true;
-    this.controls.constrainVertical = true;
-    this.controls.verticalMin = 1.0;
-    this.controls.verticalMax = 2.0;
-    this.controls.autoForward = false;
+    if (isMobile) {
+      // === MOBILE CONTROLS ===
+      this.controlsMobile = new OrbitControls(
+        this.camera,
+        this.renderer.domElement
+      );
+      this.controlsMobile.enablePan = false;
+      this.controlsMobile.enableZoom = false;
+      this.controlsMobile.minPolarAngle = Math.PI / 4; // περιορισμός κάτω
+      this.controlsMobile.maxPolarAngle = Math.PI / 1.5; // περιορισμός πάνω
+    } else {
+      // === DESKTOP CONTROLS ===
+      this.controls = new FirstPersonControls(
+        this.camera,
+        this.renderer.domElement
+      );
+      this.controls.lookSpeed = 0.05;
+      this.controls.movementSpeed = 0;
+      this.controls.lookVertical = true;
+      this.controls.constrainVertical = true;
+      this.controls.verticalMin = 1.0;
+      this.controls.verticalMax = 2.0;
+      this.controls.autoForward = false;
+    }
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
     this.scene.add(ambientLight);
@@ -361,6 +427,7 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent) {
+    if ('ontouchstart' in window) return;
     this.pressedKeys.add(event.key.toLowerCase());
   }
 
@@ -517,10 +584,15 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
 
     const delta = this.clock.getDelta();
 
-    this.updateMovement(delta);
+    // Desktop
+    if (this.controls) {
+      this.updateMovement(delta);
+      if (this.isMouseMoving) this.controls.update(delta);
+    }
 
-    if (this.isMouseMoving) {
-      this.controls.update(delta); // περιστροφή μόνο όταν κινείται το ποντίκι
+    // Mobile
+    if (this.controlsMobile) {
+      this.controlsMobile.update();
     }
 
     this.renderer.render(this.scene, this.camera);
@@ -535,7 +607,11 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
     this.camera.updateProjectionMatrix();
 
     this.renderer.setSize(width, height);
-    this.controls.handleResize();
+
+    // Only call handleResize if desktop controls exist
+    if (this.controls) {
+      this.controls.handleResize();
+    }
   }
 
   ngOnDestroy() {
