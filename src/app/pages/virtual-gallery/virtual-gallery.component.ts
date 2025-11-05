@@ -197,23 +197,25 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
 
     moveManager.on('move', (_evt, data) => {
       if (!data.vector) return;
-      const speed = data.force * 0.05;
+      const speed = data.force * 0.1; // μπορείς να αυξήσεις για πιο γρήγορο
 
-      // Forward = -Z στο world, Right = X
+      // Forward/back/right vectors based on yaw
       const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(
         this.cameraYaw.quaternion
       );
+      forward.y = 0;
+      forward.normalize();
+
       const right = new THREE.Vector3()
         .crossVectors(new THREE.Vector3(0, 1, 0), forward)
         .normalize();
 
       const move = new THREE.Vector3();
-      move.addScaledVector(forward, data.vector.y * speed); // πάνω = μπροστά
+      move.addScaledVector(forward, data.vector.y * speed);
       move.addScaledVector(right, data.vector.x * speed);
 
       const newPosition = this.cameraYaw.position.clone().add(move);
 
-      // Collision check
       if (!this.checkCollision(newPosition)) {
         this.cameraYaw.position.copy(newPosition);
       }
@@ -230,13 +232,12 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
 
     lookManager.on('move', (_evt, data) => {
       if (!data.vector) return;
-
       const sensitivity = 0.05;
 
-      // Yaw (αριστερά/δεξιά)
+      // Οριζόντια περιστροφή (yaw)
       this.cameraYaw.rotation.y -= data.vector.x * sensitivity;
 
-      // Pitch (πάνω/κάτω)
+      // Κάθετη περιστροφή (pitch)
       this.cameraPitch.rotation.x -= data.vector.y * sensitivity;
       this.cameraPitch.rotation.x = Math.max(
         -Math.PI / 2,
@@ -727,17 +728,23 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
 
     const delta = this.clock.getDelta();
 
-    // Desktop
+    // === Desktop ===
     if (this.controls) {
       this.updateMovement(delta);
       if (this.isMouseMoving) this.controls.update(delta);
     }
 
-    // Mobile
+    // === Mobile ===
     if (this.controlsMobile) {
       this.controlsMobile.update();
     }
 
+    // === Mobile smooth update (με pivots) ===
+    if (this.isMobile && this.cameraYaw && this.cameraPitch) {
+      // Αν θες επιπλέον smoothing, μπορείς να προσθέσεις lerp εδώ
+    }
+
+    // Render
     this.renderer.render(this.scene, this.camera);
   }
 
