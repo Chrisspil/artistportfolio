@@ -5,6 +5,17 @@
   overflow: hidden;
   background-color: #111;
 }
+.coming-soon {
+  display: contents;
+  width: 100%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 2rem;
+  font-family: "Artifika", serif;
+  text-align: center;
+}
 
 /* Modal styles */
 .modal {

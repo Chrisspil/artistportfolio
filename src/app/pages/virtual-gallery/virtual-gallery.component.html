@@ -1,5 +1,5 @@
-<div #rendererContainer class="renderer-container"></div>
-<!--modal for artwork info inside virtual gallery-->
+<!-- <div #rendererContainer class="renderer-container"></div>
+
 <div class="modal" *ngIf="selectedArtwork" (click)="selectedArtwork = null">
   <div class="modal-content" (click)="$event.stopPropagation()">
     <h2>{{ selectedArtwork.title }}</h2>
@@ -8,11 +8,15 @@
     <button (click)="selectedArtwork = null">Close</button>
   </div>
 </div>
-<!--modal for gallery directions-->
+
 <div class="modal" *ngIf="openDirections" (click)="selectedArtwork = null">
   <div class="modal-content" (click)="$event.stopPropagation()">
     <p>Please use your keyboard and your mouse to navigate</p>
     <img src="/assets/images/directions.png" />
     <button (click)="closeDirectionModal()">OK</button>
   </div>
+</div> -->
+
+<div class="coming-soon">
+  <p>Coming soon!!</p>
 </div>
