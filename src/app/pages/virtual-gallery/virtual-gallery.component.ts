@@ -99,6 +99,41 @@ export class VirtualGalleryComponent implements AfterViewInit, OnDestroy {
         this.camera.position.x += sideways * speed;
         this.camera.position.z -= forward * speed;
       });
+
+      const lookZone = document.createElement('div');
+      lookZone.id = 'look-joystick';
+      lookZone.style.position = 'absolute';
+      lookZone.style.bottom = '50px';
+      lookZone.style.right = '50px';
+      lookZone.style.width = '150px';
+      lookZone.style.height = '150px';
+      lookZone.style.zIndex = '10';
+      lookZone.style.background = 'transparent';
+      document.body.appendChild(lookZone);
+
+      const lookManager = nipplejs.create({
+        zone: lookZone,
+        mode: 'static',
+        position: { left: '50%', top: '50%' },
+        color: 'white',
+        size: 100,
+      });
+
+      lookManager.on('move', (evt, data) => {
+        if (!data.vector) return;
+
+        const speed = data.force * 0.02;
+
+        // Περιστροφή κάμερας
+        this.camera.rotation.y -= data.vector.x * speed; // αριστερά/δεξιά
+        this.camera.rotation.x -= data.vector.y * speed; // πάνω/κάτω
+
+        // Περιορισμός για να μην γυρίζει ανάποδα
+        this.camera.rotation.x = Math.max(
+          -Math.PI / 2,
+          Math.min(Math.PI / 2, this.camera.rotation.x)
+        );
+      });
     }
   }
 
